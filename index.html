@@ -1,0 +1,1185 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pentomino Zeka Oyunu (Bölümlü)</title>
+<style>
+  :root{
+    --bg:#f6f6f6;
+    --card:#ffffff;
+    --ink:#111827;
+    --muted:#6b7280;
+    --shadow:0 10px 30px rgba(0,0,0,.08);
+    --radius:18px;
+    /* ✅ Otomatik ölçek (JS ayarlıyor) */
+    --uiScale: 1;
+  }
+  *{box-sizing:border-box}
+  html, body { height:100%; }
+
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+    background:var(--bg);
+    color:var(--ink);
+  }
+
+  /* ✅ Ölçek kökü */
+  .scaleRoot{
+    transform: scale(var(--uiScale));
+    transform-origin: top center;
+    width: calc(100% / var(--uiScale));
+    margin: 0 auto;
+  }
+
+  .wrap{
+    max-width:1200px;
+    margin:auto;
+    height:100vh;
+    padding:14px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .topbar{
+    flex:0 0 auto;
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:12px 14px;
+  }
+  .title b{font-size:16px}
+  .title small{color:var(--muted); font-weight:800}
+
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+  }
+  .control{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    padding:6px 10px;
+    font-weight:800;
+  }
+  .control label{font-size:12px;color:var(--muted);font-weight:900}
+  select{
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    padding:6px 8px;
+    font-weight:900;
+    background:#fff;
+    outline:none;
+  }
+  .btns{display:flex; gap:6px; flex-wrap:wrap;}
+  button{
+    border:1px solid #e5e7eb;
+    background:#fff;
+    border-radius:12px;
+    padding:8px 10px;
+    font-weight:900;
+    cursor:pointer;
+    box-shadow:0 6px 16px rgba(0,0,0,.06);
+    touch-action:manipulation;
+  }
+  button:active{transform:translateY(1px)}
+  button[disabled]{opacity:.4; cursor:not-allowed}
+
+  .main{
+    flex:1 1 auto;
+    min-height:0;
+    display:grid;
+    gap:12px;
+    overflow:hidden;
+  }
+  @media (max-width:767px){
+    .main{grid-template-columns:1fr; overflow:auto;}
+    body{ overflow:auto; }
+  }
+  @media (min-width:768px){
+    .main{grid-template-columns: 2fr 1fr; align-items:stretch;}
+    body{ overflow:hidden; }
+  }
+
+  .panel{
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:12px;
+    overflow:auto;
+    min-height:0;
+  }
+  .panel h3{
+    margin:0 0 8px 0;
+    font-size:13px;
+    color:var(--muted);
+    font-weight:950;
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  canvas{
+    width:100%;
+    height:auto;
+    display:block;
+    border-radius:14px;
+    background:#fafafa;
+    border:1px solid #eef2f7;
+    touch-action:none;
+  }
+  .footer{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:6px;
+    font-weight:700;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+  }
+  .kbd{
+    background:#f3f4f6;
+    border:1px solid #e5e7eb;
+    border-radius:8px;
+    padding:2px 6px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+    font-size:12px;
+    color:#111827;
+  }
+
+  /* ✅ Çözüm animasyonu */
+  .overlay{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:rgba(17,24,39,.22);
+    backdrop-filter: blur(2px);
+    z-index:9999;
+  }
+  .overlay.show{ display:flex; }
+  .overlayCard{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:24px;
+    padding:22px 26px;
+    box-shadow:0 20px 60px rgba(0,0,0,.18);
+    text-align:center;
+    position:relative;
+    min-width:220px;
+    transform: scale(.96);
+    animation: popIn .38s ease forwards;
+  }
+  @keyframes popIn{
+    to{ transform: scale(1); }
+  }
+  .check{
+    width:74px; height:74px;
+    border-radius:999px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0 auto 10px auto;
+    border:3px solid #111827;
+    font-weight:1000;
+    font-size:40px;
+  }
+  .msg{
+    font-weight:1000;
+    font-size:18px;
+    letter-spacing:.2px;
+  }
+  .confetti{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    overflow:hidden;
+  }
+  .confetti i{
+    position:absolute;
+    top:-12px;
+    width:10px;
+    height:14px;
+    border-radius:3px;
+    opacity:.95;
+    animation: fall 900ms linear forwards;
+  }
+  @keyframes fall{
+    to{
+      transform: translate3d(var(--dx), 110vh, 0) rotate(var(--rot));
+      opacity: 0.9;
+    }
+  }
+
+</style>
+</head>
+
+<body>
+<div class="scaleRoot" id="scaleRoot">
+  <div class="wrap" id="wrap">
+
+    <div class="topbar">
+      <div class="title">
+        <b>Pentomino Zeka Oyunu</b><br>
+        <small>Bölüm seç → aktif parçalarla çöz • Her parça sadece 1 noktaya değebilir</small>
+      </div>
+
+      <div class="controls">
+        <div class="control"><label>Bölüm</label><select id="levelSel"></select></div>
+
+        <div class="btns">
+          <button id="btnRotate" disabled>⟳ Döndür</button>
+          <button id="btnMirror" disabled>⇋ Ayna</button>
+          <button id="btnDelete" disabled>🗑 Sil</button>
+          <button id="btnReset">↺ Bölümü Sıfırla</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="panel" id="boardPanel">
+        <h3>
+          <span>Board</span>
+          <span>Klavye: <span class="kbd">R</span> Döndür • <span class="kbd">M</span> Ayna • <span class="kbd">Del</span> Sil</span>
+        </h3>
+        <canvas id="board"></canvas>
+        <div class="footer">
+          <span>Grid: <span class="kbd" id="boardSizeLabel"></span></span>
+          <span>Seçili: <span class="kbd" id="selLabel">yok</span></span>
+          <span>Aktif parçalar: <span class="kbd" id="activeLabel">-</span></span>
+          <span>Uyarı: <span class="kbd" id="ruleLabel">-</span></span>
+        </div>
+      </div>
+
+      <div class="panel" id="rightPanel">
+        <h3>
+          <span>Parça Paleti</span>
+          <span>12 pentomino</span>
+        </h3>
+        <canvas id="palette"></canvas>
+        <div class="footer">Aktif olmayan parçalar gri görünür ve seçilemez.</div>
+      </div>
+    </div>
+
+  
+    <!-- ✅ ÇÖZÜLDÜ ANİMASYONU -->
+    <div id="solvedOverlay" class="overlay" aria-hidden="true">
+      <div class="overlayCard">
+        <div class="check">✓</div>
+        <div class="msg">Çözüldü!</div>
+      </div>
+      <div class="confetti" id="confetti"></div>
+    </div>
+
+</div>
+</div>
+
+<script>
+/* =========================
+   ✅ BÖLÜM SİSTEMİ
+   - Her bölüm: grid boyutu + minik daireler (marker) + aktif parçalar
+   - KURAL: Yerleşen her parça, marker hücrelerinden SADECE 1 tanesini kaplayabilir.
+========================= */
+
+/**
+ * x,y: 0-index (sol üst 0,0)
+ * marker = hücre ortasında minik daire
+ */
+const LEVELS = [
+  {
+    name: "Bölüm 1",
+    rows: 6,
+    cols: 7,
+    markers: [
+      {x:1,y:0},{x:4,y:0},{x:5,y:0},
+      {x:2,y:1},
+      {x:3,y:3},{x:4,y:3},
+      {x:2,y:4},
+      {x:0,y:5}
+    ],
+    activePieces: ["L","P","T","V","Z"]
+  },
+  {
+    name: "Bölüm 2",
+    rows: 8,
+    cols: 8,
+    markers: [{x:3,y:3},{x:4,y:4},{x:1,y:6},{x:6,y:1}],
+    activePieces: ["F","I","N","U","W","X","Y","Z"]
+  }
+];
+
+// Aktif parçalar (bölüm seçimine göre güncellenecek)
+let ACTIVE_SET = new Set(LEVELS[0].activePieces);
+
+// Board üstüne çizilecek minik daireler
+let boardMarkers = LEVELS[0].markers.slice();
+let markerSet = new Set(boardMarkers.map(m => `${m.x},${m.y}`));
+
+function isPieceActive(id){ return ACTIVE_SET.has(id); }
+
+/* =========================
+   ✅ AUTO FIT SCALE (PC)
+========================= */
+const wrapEl = document.getElementById("wrap");
+function updateUIScale(){
+  const isPC = window.matchMedia("(min-width: 768px)").matches;
+  if(!isPC){
+    document.documentElement.style.setProperty("--uiScale", "1");
+    return;
+  }
+  // Ölçümleri her zaman 1x ölçekte alıp sonra scale uygula.
+  // (Böylece index.html olunca değişen yükseklik/genişliklerde taşma yaşamaz.)
+  const rootStyle = document.documentElement.style;
+  const prev = getComputedStyle(document.documentElement).getPropertyValue("--uiScale").trim() || "1";
+
+  // Önce 1'e çek, bir sonraki frame'de ölç.
+  rootStyle.setProperty("--uiScale", "1");
+
+  // Not: Bu fonksiyon scheduleScale() üzerinden RAF ile çağrıldığı için
+  // burada ekstra reflow zorlamıyoruz (titreme yapmasın).
+  const viewportH = window.innerHeight;
+  const viewportW = window.innerWidth;
+  const contentH = wrapEl.scrollHeight;
+  const contentW = wrapEl.scrollWidth;
+
+  // Hem yükseklik hem genişlik için en küçük oranı uygula.
+  let sH = contentH > 0 ? (viewportH / contentH) : 1;
+  let sW = contentW > 0 ? (viewportW / contentW) : 1;
+  let s = Math.min(1, sH, sW);
+
+  // Çok küçük ekranlarda bile okunabilir kalsın.
+  s = Math.max(0.68, Math.min(1, s));
+
+  // Gereksiz yazmayı engelle (mikro titreme)
+  const next = String(s);
+  if(next !== prev) rootStyle.setProperty("--uiScale", next);
+}
+let scaleRaf = 0;
+function scheduleScale(){
+  cancelAnimationFrame(scaleRaf);
+  scaleRaf = requestAnimationFrame(()=>updateUIScale());
+}
+
+// İçerik/font/yerleşim değişince de otomatik yeniden fit et
+try{
+  if(document.fonts && document.fonts.ready){
+    document.fonts.ready.then(()=>scheduleScale());
+  }
+}catch(e){}
+
+window.addEventListener("load", ()=>scheduleScale(), {once:true});
+
+// wrap içeriği değişince (canvas boyutu, level adı, vb.)
+if("ResizeObserver" in window){
+  const ro = new ResizeObserver(()=>scheduleScale());
+  ro.observe(wrapEl);
+}
+
+/* =========================
+   12 Pentomino
+========================= */
+const PENTOMINOES = {
+  F: [[0,1],[1,0],[1,1],[1,2],[2,0]],
+  I: [[0,0],[0,1],[0,2],[0,3],[0,4]],
+  L: [[0,0],[0,1],[0,2],[0,3],[1,3]],
+  P: [[0,0],[1,0],[0,1],[1,1],[0,2]],
+  N: [[0,0],[0,1],[1,1],[1,2],[1,3]],
+  T: [[0,0],[1,0],[2,0],[1,1],[1,2]],
+  U: [[0,0],[1,0],[2,0],[0,1],[2,1]],
+  V: [[0,0],[0,1],[0,2],[1,2],[2,2]],
+  W: [[0,0],[1,0],[1,1],[2,1],[2,2]],
+  X: [[1,0],[0,1],[1,1],[2,1],[1,2]],
+  Y: [[0,0],[0,1],[0,2],[0,3],[1,2]],
+  // ✅ emoji Z: 🟦🟦⬜ / ⬜🟦⬜ / ⬜🟦🟦
+  Z: [[0,0],[1,0],[1,1],[1,2],[2,2]],
+};
+const COLORS = {
+  F:"#f97316", I:"#22c55e", L:"#3b82f6", P:"#a855f7",
+  N:"#ef4444", T:"#06b6d4", U:"#f59e0b", V:"#10b981",
+  W:"#8b5cf6", X:"#0ea5e9", Y:"#84cc16", Z:"#e11d48"
+};
+
+function normalize(cells){
+  let minX=Infinity, minY=Infinity;
+  for(const [x,y] of cells){ if(x<minX)minX=x; if(y<minY)minY=y; }
+  const out = cells.map(([x,y])=>[x-minX,y-minY]);
+  out.sort((a,b)=>(a[1]-b[1])||(a[0]-b[0]));
+  return out;
+}
+function rotate90(cells){ return cells.map(([x,y])=>[y,-x]); }
+function reflectX(cells){ return cells.map(([x,y])=>[-x,y]); }
+function keyOf(cells){ return cells.map(([x,y])=>`${x},${y}`).join(";"); }
+function uniqueOrientations(cells, allowReflections=true){
+  const out=[], seen=new Set();
+  let r=cells;
+  for(let i=0;i<4;i++){
+    const n1=normalize(r), k1=keyOf(n1);
+    if(!seen.has(k1)){ seen.add(k1); out.push(n1); }
+    if(allowReflections){
+      const n2=normalize(reflectX(r)), k2=keyOf(n2);
+      if(!seen.has(k2)){ seen.add(k2); out.push(n2); }
+    }
+    r=rotate90(r);
+  }
+  return out;
+}
+function bounds(cells){
+  let maxX=0,maxY=0;
+  for(const [x,y] of cells){ if(x>maxX)maxX=x; if(y>maxY)maxY=y; }
+  return {w:maxX+1, h:maxY+1};
+}
+
+const boardCanvas = document.getElementById("board");
+const palCanvas   = document.getElementById("palette");
+const boardPanel  = document.getElementById("boardPanel");
+const bctx = boardCanvas.getContext("2d");
+const pctx = palCanvas.getContext("2d");
+
+const board = { cols: LEVELS[0].cols, rows: LEVELS[0].rows, cell: 44, pad: 16, labelPad: 26 };
+const palette = { cols: 3, gap: 14, cell: 26, pad: 16, itemW: 0, itemH: 0, slots: [] };
+
+const pieceDefs = Object.keys(PENTOMINOES).map(id => ({
+  id,
+  base: normalize(PENTOMINOES[id]),
+  orients: uniqueOrientations(PENTOMINOES[id], true)
+}));
+
+const paletteState = {};
+for (const d of pieceDefs) paletteState[d.id] = { cells: d.base };
+
+let paletteSelectedId = null;
+const usedPieces = new Set();
+let placed = [];
+let selected = null;
+let dragging = null;
+
+const boardSizeLabel = document.getElementById("boardSizeLabel");
+const selLabel = document.getElementById("selLabel");
+const activeLabel = document.getElementById("activeLabel");
+const ruleLabel = document.getElementById("ruleLabel");
+const solvedOverlay = document.getElementById("solvedOverlay");
+const confettiEl = document.getElementById("confetti");
+let isCelebrating = false;
+
+
+const btnRotate = document.getElementById("btnRotate");
+const btnMirror = document.getElementById("btnMirror");
+const btnDelete = document.getElementById("btnDelete");
+const btnReset  = document.getElementById("btnReset");
+
+/* =========================
+   Bölüm dropdown
+========================= */
+const levelSel = document.getElementById("levelSel");
+function fillLevels(){
+  levelSel.innerHTML = "";
+  LEVELS.forEach((lv, i)=>{
+    const o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = lv.name || `Bölüm ${i+1}`;
+    levelSel.appendChild(o);
+  });
+  levelSel.value = "0";
+}
+fillLevels();
+
+function resetForLevel(){
+  // çözüm ekranı açıksa kapat
+  solvedOverlay.classList.remove("show");
+  confettiEl.innerHTML = "";
+  isCelebrating = false;
+
+  placed = [];
+  selected = null;
+  dragging = null;
+  usedPieces.clear();
+  paletteSelectedId = null;
+  for(const d of pieceDefs) paletteState[d.id].cells = d.base;
+
+  drawAll();
+  scheduleScale();
+}
+
+function applyLevel(levelIndex){
+  const lv = LEVELS[levelIndex] || LEVELS[0];
+
+  ACTIVE_SET = new Set(lv.activePieces || []);
+  boardMarkers = (lv.markers || []).slice();
+  markerSet = new Set(boardMarkers.map(m => `${m.x},${m.y}`));
+
+  board.rows = lv.rows;
+  board.cols = lv.cols;
+
+  resetForLevel();
+  fitCanvases();
+  drawAll();
+}
+levelSel.addEventListener("change", ()=>{
+  applyLevel(parseInt(levelSel.value,10));
+});
+
+/* =========================
+   KURAL: parça sadece 1 marker kaplayabilir
+========================= */
+function markerHitCount(worldCells){
+  let c = 0;
+  for(const [x,y] of worldCells){
+    if(markerSet.has(`${x},${y}`)) c++;
+    if(c>1) return c;
+  }
+  return c;
+}
+function satisfiesMarkerRule(worldCells){
+  return markerHitCount(worldCells) === 1;
+}
+
+function isSolved(){
+  // ✅ Sadece bu bölümde aktif olan parçalar sayılır
+  for(const pid of ACTIVE_SET){
+    if(!usedPieces.has(pid)) return false;
+  }
+  return ACTIVE_SET.size > 0;
+}
+
+function spawnConfetti(n=36){
+  confettiEl.innerHTML = "";
+  const w = window.innerWidth;
+  for(let i=0;i<n;i++){
+    const el = document.createElement("i");
+    const colors = ["#111827","#ef4444","#22c55e","#3b82f6","#f59e0b","#a855f7","#06b6d4"];
+    el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.left = Math.floor(Math.random()*100) + "vw";
+    el.style.setProperty("--dx", (Math.random()*0.6*w - 0.3*w).toFixed(0) + "px");
+    el.style.setProperty("--rot", (Math.random()*720 - 360).toFixed(0) + "deg");
+    el.style.animationDuration = (650 + Math.random()*500).toFixed(0) + "ms";
+    el.style.width = (8 + Math.random()*10).toFixed(0) + "px";
+    el.style.height = (10 + Math.random()*14).toFixed(0) + "px";
+    confettiEl.appendChild(el);
+  }
+}
+
+function celebrateAndNext(){
+  if(isCelebrating) return;
+  isCelebrating = true;
+
+  // etkileşimi kilitle
+  dragging = null;
+  selected = null;
+  paletteSelectedId = null;
+  btnRotate.disabled = true;
+  btnMirror.disabled = true;
+  btnDelete.disabled = true;
+  btnReset.disabled = true;
+  levelSel.disabled = true;
+
+  spawnConfetti();
+
+  solvedOverlay.classList.add("show");
+  solvedOverlay.setAttribute("aria-hidden","false");
+
+  setTimeout(()=>{
+    solvedOverlay.classList.remove("show");
+    solvedOverlay.setAttribute("aria-hidden","true");
+    confettiEl.innerHTML = "";
+
+    const cur = parseInt(levelSel.value,10);
+    const next = Math.min(cur + 1, LEVELS.length - 1);
+    if(next !== cur){
+      levelSel.value = String(next);
+      applyLevel(next);
+    }else{
+      drawAll();
+    }
+
+    btnReset.disabled = false;
+    levelSel.disabled = false;
+    isCelebrating = false;
+  }, 900);
+}
+
+function checkSolvedAndMaybeCelebrate(){
+  if(isCelebrating) return;
+  if(isSolved()) celebrateAndNext();
+}
+
+/* =========================
+   Yardımcı fonksiyonlar
+========================= */
+function cellsToWorld(cells, gx, gy){ return cells.map(([x,y]) => [x+gx, y+gy]); }
+function isInsideBoard(worldCells){
+  for(const [x,y] of worldCells){
+    if(x<0 || y<0 || x>=board.cols || y>=board.rows) return false;
+  }
+  return true;
+}
+function collides(worldCells, ignorePiece=null){
+  const occ = new Set();
+  for(const pc of placed){
+    if(ignorePiece && pc === ignorePiece) continue;
+    const w = cellsToWorld(pc.cells, pc.gx, pc.gy);
+    for(const [x,y] of w) occ.add(`${x},${y}`);
+  }
+  for(const [x,y] of worldCells){
+    if(occ.has(`${x},${y}`)) return true;
+  }
+  return false;
+}
+
+function getBoardCanvasMaxHeight(){
+  const h3 = boardPanel.querySelector("h3");
+  const footer = boardPanel.querySelector(".footer");
+  const padTopBottom = 24;
+  const gaps = 18;
+  const panelH = boardPanel.clientHeight;
+  const h3H = h3 ? h3.offsetHeight : 0;
+  const fH  = footer ? footer.offsetHeight : 0;
+  const usable = panelH - h3H - fH - padTopBottom - gaps;
+  return Math.max(180, usable);
+}
+
+function fitCanvases(){
+  const boardWidth = boardCanvas.parentElement.clientWidth;
+  const maxCanvasH = getBoardCanvasMaxHeight();
+  const usableH = maxCanvasH - (board.pad*2 + board.labelPad);
+  const idealCellH = Math.floor(usableH / board.rows);
+
+  const usableW = boardWidth - (board.pad*2 + board.labelPad);
+  const idealCellW = Math.floor(usableW / board.cols);
+
+  const ideal = Math.min(idealCellW, idealCellH);
+  board.cell = Math.max(14, Math.min(56, ideal));
+
+  const gridW = board.cols * board.cell;
+  const gridH = board.rows * board.cell;
+  boardCanvas.width  = board.pad*2 + board.labelPad + gridW;
+  boardCanvas.height = board.pad*2 + board.labelPad + gridH;
+
+  const palWidth = palCanvas.parentElement.clientWidth;
+  palette.cols = (palWidth >= 520) ? 6 : (palWidth >= 360 ? 4 : 3);
+
+  const palCell = Math.max(16, Math.min(32, Math.floor((palWidth - 2*palette.pad - (palette.cols-1)*palette.gap) / (palette.cols*5))));
+  palette.cell = palCell;
+
+  palette.itemW = palette.cell*5;
+  palette.itemH = palette.cell*5;
+
+  const rowsNeeded = Math.ceil(pieceDefs.length / palette.cols);
+  const pw = palette.pad*2 + palette.cols*palette.itemW + (palette.cols-1)*palette.gap;
+  const ph = palette.pad*2 + rowsNeeded*palette.itemH + (rowsNeeded-1)*palette.gap;
+
+  palCanvas.width = Math.max(palWidth, pw);
+  palCanvas.height = ph;
+
+  palette.slots = [];
+  for(let i=0;i<pieceDefs.length;i++){
+    const r = Math.floor(i / palette.cols);
+    const c = i % palette.cols;
+    const x = palette.pad + c*(palette.itemW + palette.gap);
+    const y = palette.pad + r*(palette.itemH + palette.gap);
+    palette.slots.push({ id: pieceDefs[i].id, x, y, w: palette.itemW, h: palette.itemH });
+  }
+
+  drawAll();
+}
+
+window.addEventListener("resize", ()=>{
+  fitCanvases();
+  scheduleScale();
+});
+
+/* =========================
+   Çizim
+========================= */
+function clear(ctx, w, h){ ctx.clearRect(0,0,w,h); }
+function roundRect(ctx, x, y, w, h, r){
+  const rr = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rr, y);
+  ctx.arcTo(x+w, y, x+w, y+h, rr);
+  ctx.arcTo(x+w, y+h, x, y+h, rr);
+  ctx.arcTo(x, y+h, x, y, rr);
+  ctx.arcTo(x, y, x+w, y, rr);
+  ctx.closePath();
+}
+function drawCells(ctx, cells, ox, oy, cell, color, stroke="#111827", alpha=1){
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 2;
+  for(const [x,y] of cells){
+    const px = ox + x*cell;
+    const py = oy + y*cell;
+    const r = Math.max(5, Math.floor(cell*0.18));
+    roundRect(ctx, px+1, py+1, cell-2, cell-2, r);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawGrid(ctx, x0, y0, cols, rows, cell){
+  ctx.save();
+  ctx.translate(x0, y0);
+  ctx.strokeStyle = "#e5e7eb";
+  ctx.lineWidth = 1;
+  for(let x=0;x<=cols;x++){
+    ctx.beginPath();
+    ctx.moveTo(x*cell, 0);
+    ctx.lineTo(x*cell, rows*cell);
+    ctx.stroke();
+  }
+  for(let y=0;y<=rows;y++){
+    ctx.beginPath();
+    ctx.moveTo(0, y*cell);
+    ctx.lineTo(cols*cell, y*cell);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawBoardLabels(ctx, x0, y0, cols, rows, cell){
+  ctx.save();
+  ctx.fillStyle = "#6b7280";
+  ctx.font = "900 12px system-ui,-apple-system,Segoe UI,Roboto,Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const topY = y0 - board.labelPad/2;
+  for(let c=0;c<cols;c++){
+    const letter = String.fromCharCode(65 + c);
+    const cx = x0 + c*cell + cell/2;
+    ctx.fillText(letter, cx, topY);
+  }
+
+  const leftX = x0 - board.labelPad/2;
+  for(let r=0;r<rows;r++){
+    const num = String(r+1);
+    const cy = y0 + r*cell + cell/2;
+    ctx.fillText(num, leftX, cy);
+  }
+  ctx.restore();
+}
+function drawMarkers(ctx, gridX, gridY){
+  ctx.save();
+  ctx.fillStyle = "#111827";
+  const rad = Math.max(3, Math.floor(board.cell * 0.14));
+  for(const m of boardMarkers){
+    const cx = gridX + m.x*board.cell + board.cell/2;
+    const cy = gridY + m.y*board.cell + board.cell/2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // sağ alt köşe: bölüm numarası
+  ctx.save();
+  ctx.fillStyle = "#9ca3af";
+  ctx.font = `900 ${Math.max(14, Math.floor(board.cell*0.42))}px system-ui,-apple-system,Segoe UI,Roboto,Arial`;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "bottom";
+  const lv = parseInt(levelSel.value,10) + 1;
+  ctx.fillText(String(lv), boardCanvas.width - board.pad - 8, boardCanvas.height - board.pad - 6);
+  ctx.restore();
+}
+
+function drawBoard(){
+  clear(bctx, boardCanvas.width, boardCanvas.height);
+  const gridX = board.pad + board.labelPad;
+  const gridY = board.pad + board.labelPad;
+
+  bctx.save();
+  bctx.fillStyle = "#ffffff";
+  roundRect(bctx, board.pad, board.pad, boardCanvas.width-board.pad*2, boardCanvas.height-board.pad*2, 14);
+  bctx.fill();
+  bctx.restore();
+
+  drawBoardLabels(bctx, gridX, gridY, board.cols, board.rows, board.cell);
+  drawGrid(bctx, gridX, gridY, board.cols, board.rows, board.cell);
+
+  // ✅ markerlar
+  drawMarkers(bctx, gridX, gridY);
+
+  for(const pc of placed){
+    const ox = gridX + pc.gx*board.cell;
+    const oy = gridY + pc.gy*board.cell;
+    const isSel = (selected === pc);
+    drawCells(bctx, pc.cells, ox, oy, board.cell, pc.color, "#111827", 1);
+    if(isSel){
+      const bb = bounds(pc.cells);
+      bctx.save();
+      bctx.strokeStyle = "#111827";
+      bctx.lineWidth = 2;
+      bctx.setLineDash([6,4]);
+      bctx.strokeRect(ox, oy, bb.w*board.cell, bb.h*board.cell);
+      bctx.restore();
+    }
+  }
+
+  if(dragging && dragging.ghostCells){
+    const {ghostCells, ghostGX, ghostGY, validDrop, piece, ruleOk} = dragging;
+    const ox = gridX + ghostGX*board.cell;
+    const oy = gridY + ghostGY*board.cell;
+
+    // Kural ihlali varsa kırmızı; sadece çakışma değil, marker kuralı da
+    const ok = validDrop && ruleOk;
+    const alpha = ok ? 0.55 : 0.20;
+    const stroke = ok ? "#111827" : "#ef4444";
+    drawCells(bctx, ghostCells, ox, oy, board.cell, COLORS[piece.id], stroke, alpha);
+  }
+}
+
+function drawPalette(){
+  clear(pctx, palCanvas.width, palCanvas.height);
+  pctx.save();
+  pctx.strokeStyle = "#e5e7eb";
+  pctx.fillStyle = "#ffffff";
+
+  for(const s of palette.slots){
+    roundRect(pctx, s.x, s.y, s.w, s.h, 14);
+    pctx.fill();
+    pctx.stroke();
+
+    const disabledByUse = usedPieces.has(s.id);
+    const disabledByLevel = !isPieceActive(s.id);
+    const disabled = disabledByUse || disabledByLevel;
+    const isPalSel = (paletteSelectedId === s.id);
+
+    if (isPalSel) {
+      pctx.save();
+      pctx.strokeStyle = "#111827";
+      pctx.lineWidth = 3;
+      roundRect(pctx, s.x+2, s.y+2, s.w-4, s.h-4, 14);
+      pctx.stroke();
+      pctx.restore();
+    }
+
+    const def = pieceDefs.find(d=>d.id===s.id);
+    const cells = (paletteState[s.id]?.cells || def.base);
+    const bb = bounds(cells);
+
+    const cell = palette.cell;
+    const shapeW = bb.w * cell;
+    const shapeH = bb.h * cell;
+    const ox = s.x + Math.floor((s.w - shapeW)/2);
+    const oy = s.y + Math.floor((s.h - shapeH)/2);
+
+    drawCells(pctx, cells, ox, oy, cell, COLORS[s.id], "#111827", disabled ? 0.18 : 1);
+
+    pctx.save();
+    pctx.fillStyle = disabled ? "#9ca3af" : "#111827";
+    pctx.font = "900 14px system-ui,-apple-system,Segoe UI,Roboto,Arial";
+    pctx.fillText(s.id, s.x + 10, s.y + 18);
+    pctx.restore();
+
+    if(disabledByLevel){
+      pctx.save();
+      pctx.fillStyle = "rgba(17,24,39,.08)";
+      roundRect(pctx, s.x+6, s.y+6, s.w-12, s.h-12, 12);
+      pctx.fill();
+      pctx.restore();
+    }
+  }
+
+  pctx.restore();
+}
+function drawAll(){ drawBoard(); drawPalette(); updateUI(); }
+
+/* =========================
+   Etkileşim
+========================= */
+function pickPieceAtBoard(px, py){
+  const gridX = board.pad + board.labelPad;
+  const gridY = board.pad + board.labelPad;
+
+  for(let i=placed.length-1;i>=0;i--){
+    const pc = placed[i];
+    const ox = gridX + pc.gx*board.cell;
+    const oy = gridY + pc.gy*board.cell;
+    const bb = bounds(pc.cells);
+    const w = bb.w*board.cell, h=bb.h*board.cell;
+
+    if(px>=ox && px<=ox+w && py>=oy && py<=oy+h){
+      const gx = Math.floor((px - gridX)/board.cell);
+      const gy = Math.floor((py - gridY)/board.cell);
+      const localX = gx - pc.gx;
+      const localY = gy - pc.gy;
+      if(pc.cells.some(([x,y])=>x===localX && y===localY)) return pc;
+    }
+  }
+  return null;
+}
+function pickPaletteSlot(px, py){
+  for(const s of palette.slots){
+    if(px>=s.x && px<=s.x+s.w && py>=s.y && py<=s.y+s.h) return s;
+  }
+  return null;
+}
+function getPos(evt, canvas){
+  const rect = canvas.getBoundingClientRect();
+  const x = (evt.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (evt.clientY - rect.top)  * (canvas.height / rect.height);
+  return {x,y};
+}
+
+function startDragFromPalette(slot){
+  if (usedPieces.has(slot.id)) return;
+  if (!isPieceActive(slot.id)) return;
+
+  const def = pieceDefs.find(d=>d.id===slot.id);
+  const startCells = paletteState[def.id]?.cells || def.base;
+  dragging = { from:"palette", piece:{ id:def.id, cells:startCells }, ghostCells:null, ghostGX:0, ghostGY:0, validDrop:false, ruleOk:false };
+}
+function startDragFromBoard(pc, px, py){
+  selected = pc;
+  paletteSelectedId = null;
+
+  const gridX = board.pad + board.labelPad;
+  const gridY = board.pad + board.labelPad;
+  const ox = gridX + pc.gx*board.cell;
+  const oy = gridY + pc.gy*board.cell;
+
+  dragging = {
+    from:"board",
+    piece: { id: pc.id, cells: pc.cells },
+    boardPieceRef: pc,
+    offsetX: px - ox,
+    offsetY: py - oy,
+    ghostCells: pc.cells,
+    ghostGX: pc.gx,
+    ghostGY: pc.gy,
+    validDrop: true,
+    ruleOk: true
+  };
+}
+function updateDragOnBoard(px, py){
+  if(!dragging) return;
+
+  const gridX = board.pad + board.labelPad;
+  const gridY = board.pad + board.labelPad;
+
+  const gx = Math.floor((px - gridX) / board.cell);
+  const gy = Math.floor((py - gridY) / board.cell);
+
+  let baseGX = gx, baseGY = gy;
+  if(dragging.from==="board"){
+    const offGX = Math.floor(dragging.offsetX / board.cell);
+    const offGY = Math.floor(dragging.offsetY / board.cell);
+    baseGX = gx - offGX;
+    baseGY = gy - offGY;
+  }
+
+  const cells = dragging.piece.cells;
+  const world = cellsToWorld(cells, baseGX, baseGY);
+
+  const inside = isInsideBoard(world);
+  const col = collides(world, dragging.from==="board" ? dragging.boardPieceRef : null);
+
+  dragging.ghostCells = cells;
+  dragging.ghostGX = baseGX;
+  dragging.ghostGY = baseGY;
+  dragging.validDrop = inside && !col;
+
+  // ✅ Marker kuralı: tam 1 marker
+  dragging.ruleOk = inside ? satisfiesMarkerRule(world) : false;
+
+  drawBoard();
+}
+function commitDrop(){
+  if(!dragging) return;
+
+  if(dragging.validDrop && dragging.ruleOk){
+    if(dragging.from==="palette"){
+      placed.push({ id: dragging.piece.id, cells: dragging.piece.cells, gx: dragging.ghostGX, gy: dragging.ghostGY, color: COLORS[dragging.piece.id] });
+      usedPieces.add(dragging.piece.id);
+      selected = placed[placed.length-1];
+      paletteSelectedId = null;
+    } else {
+      const pc = dragging.boardPieceRef;
+      pc.gx = dragging.ghostGX;
+      pc.gy = dragging.ghostGY;
+      selected = pc;
+      const idx = placed.indexOf(pc);
+      if(idx>=0){ placed.splice(idx,1); placed.push(pc); }
+    }
+  }
+
+  dragging = null;
+  drawAll();
+  checkSolvedAndMaybeCelebrate();
+}
+
+function rotateSelected(){
+  if (selected) {
+    const def = pieceDefs.find(d=>d.id===selected.id);
+    const orients = def.orients;
+    const curKey = keyOf(normalize(selected.cells));
+    let idx = orients.findIndex(o => keyOf(o)===curKey);
+    if(idx<0) idx=0;
+    const next = orients[(idx+1)%orients.length];
+
+    const world = cellsToWorld(next, selected.gx, selected.gy);
+    if(isInsideBoard(world) && !collides(world, selected) && satisfiesMarkerRule(world)){
+      selected.cells = next;
+    }
+    drawAll();
+    checkSolvedAndMaybeCelebrate();
+    return;
+  }
+
+  if (paletteSelectedId) {
+    if(!isPieceActive(paletteSelectedId)) return;
+    const def = pieceDefs.find(d=>d.id===paletteSelectedId);
+    const orients = def.orients;
+    const curCells = paletteState[paletteSelectedId].cells;
+    const curKey = keyOf(normalize(curCells));
+    let idx = orients.findIndex(o => keyOf(o)===curKey);
+    if(idx<0) idx=0;
+    paletteState[paletteSelectedId].cells = orients[(idx+1)%orients.length];
+    drawAll();
+  }
+}
+function mirrorSelected(){
+  if (selected) {
+    const mirrored = normalize(reflectX(selected.cells));
+    const world = cellsToWorld(mirrored, selected.gx, selected.gy);
+    if(isInsideBoard(world) && !collides(world, selected) && satisfiesMarkerRule(world)){
+      selected.cells = mirrored;
+    }
+    drawAll();
+    return;
+  }
+  if (paletteSelectedId) {
+    if(!isPieceActive(paletteSelectedId)) return;
+    paletteState[paletteSelectedId].cells = normalize(reflectX(paletteState[paletteSelectedId].cells));
+    drawAll();
+  }
+}
+function deleteSelected(){
+  if(selected){
+    const idx = placed.indexOf(selected);
+    if(idx>=0){ placed.splice(idx,1); usedPieces.delete(selected.id); }
+    selected = null;
+    drawAll();
+    return;
+  }
+  if(paletteSelectedId){
+    const def = pieceDefs.find(d=>d.id===paletteSelectedId);
+    paletteState[paletteSelectedId].cells = def.base;
+    paletteSelectedId = null;
+    drawAll();
+  }
+}
+
+function updateUI(){
+  boardSizeLabel.textContent = `${board.cols}×${board.rows}`;
+  const hasSel = !!selected || !!paletteSelectedId;
+  btnRotate.disabled = !hasSel;
+  btnMirror.disabled = !hasSel;
+  btnDelete.disabled = !hasSel;
+  selLabel.textContent = selected ? selected.id : (paletteSelectedId ? `palette:${paletteSelectedId}` : "yok");
+  activeLabel.textContent = [...ACTIVE_SET].join(",") || "-";
+
+  if(dragging){
+    const world = cellsToWorld(dragging.piece.cells, dragging.ghostGX, dragging.ghostGY);
+    const c = isInsideBoard(world) ? markerHitCount(world) : 0;
+    ruleLabel.textContent = `marker: ${c}/1`;
+  } else {
+    ruleLabel.textContent = "marker: 1/1";
+  }
+}
+
+/* =========================
+   Butonlar / Kısayollar
+========================= */
+btnRotate.addEventListener("click", rotateSelected);
+btnMirror.addEventListener("click", mirrorSelected);
+btnDelete.addEventListener("click", deleteSelected);
+btnReset.addEventListener("click", ()=>resetForLevel());
+
+window.addEventListener("keydown", (e)=>{
+  if(isCelebrating) return;
+  if(e.key==="r" || e.key==="R") rotateSelected();
+  if(e.key==="m" || e.key==="M") mirrorSelected();
+  if(e.key==="Delete" || e.key==="Backspace") deleteSelected();
+});
+
+function attachPointer(canvas, onDown, onMove, onUp){
+  canvas.addEventListener("pointerdown", (e)=>{ canvas.setPointerCapture(e.pointerId); onDown(e); });
+  canvas.addEventListener("pointermove", onMove);
+  canvas.addEventListener("pointerup", (e)=>onUp(e));
+  canvas.addEventListener("pointercancel", (e)=>onUp(e));
+}
+attachPointer(boardCanvas,
+  (e)=>{
+    if(isCelebrating) return;
+    const {x,y} = getPos(e, boardCanvas);
+    const hit = pickPieceAtBoard(x,y);
+    if(hit) startDragFromBoard(hit, x, y);
+    else { selected = null; drawAll(); }
+  },
+  (e)=>{
+    if(!dragging) return;
+    const {x,y} = getPos(e, boardCanvas);
+    updateDragOnBoard(x,y);
+  },
+  ()=>{
+    if(!dragging) return;
+    commitDrop();
+  }
+);
+attachPointer(palCanvas,
+  (e)=>{
+    if(isCelebrating) return;
+    const {x,y} = getPos(e, palCanvas);
+    const slot = pickPaletteSlot(x,y);
+    if(slot){
+      if(!usedPieces.has(slot.id) && isPieceActive(slot.id)){
+        paletteSelectedId = slot.id;
+        selected = null;
+        drawAll();
+      }
+      startDragFromPalette(slot);
+    }
+  },
+  ()=>{},
+  ()=>{}
+);
+
+window.addEventListener("pointermove", (e)=>{
+  if(!dragging) return;
+  const rect = boardCanvas.getBoundingClientRect();
+  const inside = (e.clientX>=rect.left && e.clientX<=rect.right && e.clientY>=rect.top && e.clientY<=rect.bottom);
+  if(!inside) return;
+  const {x,y} = getPos(e, boardCanvas);
+  updateDragOnBoard(x,y);
+});
+window.addEventListener("pointerup", (e)=>{
+  if(!dragging) return;
+  const rect = boardCanvas.getBoundingClientRect();
+  const inside = (e.clientX>=rect.left && e.clientX<=rect.right && e.clientY>=rect.top && e.clientY<=rect.bottom);
+  if(inside) commitDrop();
+  else { dragging=null; drawAll(); }
+});
+
+/* INIT */
+fitCanvases();
+updateUIScale();
+applyLevel(0);
+setTimeout(()=>{ fitCanvases(); updateUIScale(); }, 50);
+</script>
+</body>
+</html>
